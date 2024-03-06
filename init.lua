@@ -598,6 +598,7 @@ require('lazy').setup {
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
+          ['jdtls'] = function() end,
         },
       }
     end,
@@ -817,7 +818,34 @@ require('lazy').setup {
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
   --    For additional information, see `:help lazy.nvim-lazy.nvim-structuring-your-plugins`
   -- { import = 'custom.plugins' },
+
+  'mfussenegger/nvim-jdtls',
 }
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+
+-- NOTE: <⌘-o> is mapped to <C-o> in iTerm profile key mappings.
+vim.keymap.set('n', '<C-o>', ':Telescope find_files prompt_prefix=🔍<CR>', { noremap = true, silent = true })
+
+-- NOTE: <⌘-⇧-f> is mapped to <C-f> in iTerm profile key mappings.
+vim.keymap.set('n', '<C-f>', function()
+  require('telescope.builtin').live_grep()
+end, { noremap = true, silent = true })
+
+-- NOTE: <⌘-s> is mapped to <C-s> in iTerm profile key mappings.
+vim.keymap.set('n', '<C-s>', ':w<CR>', { noremap = true, silent = true })
+
+vim.keymap.set('n', '<leader>f', ':Telescope find_files prompt_prefix=🔍<CR>', { noremap = true, silent = true })
+
+vim.keymap.set('n', 'øø', ':w<CR>', { noremap = true, silent = true })
+
+vim.api.nvim_exec(
+  [[
+    augroup jdtls
+        autocmd!
+        autocmd FileType java lua require('jdtls').start_or_attach({cmd = {'jdtls', '--jvm-arg=-javaagent:/Users/adrian.helvik/.config/nvim/lombok.jar'}})
+    augroup end
+]],
+  false
+)
