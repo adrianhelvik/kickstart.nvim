@@ -84,6 +84,13 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
+-- Make neotree not use legacy features
+vim.cmd([[ let g:neo_tree_remove_legacy_commands = 1 ]])
+
+
+vim.cmd([[let g:neovide_input_macos_option_key_is_meta = 'only_left']])
+
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -119,8 +126,8 @@ vim.opt.breakindent = true
 vim.opt.undofile = true
 
 -- Case-insensitive searching UNLESS \C or capital in search
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
+vim.opt.ignorecase = false
+vim.opt.smartcase = false
 
 -- Keep signcolumn on by default
 vim.opt.signcolumn = 'yes'
@@ -242,6 +249,7 @@ require('lazy').setup {
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
     opts = {
+      current_line_blame = true,
       signs = {
         add = { text = '+' },
         change = { text = '~' },
@@ -349,6 +357,12 @@ require('lazy').setup {
         --   },
         -- },
         -- pickers = {}
+        file_ignore_patterns = { 
+          "node_modules",
+          "dist",
+          "target",
+          ".git"
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -465,6 +479,9 @@ require('lazy').setup {
           --  Useful when your language has ways of declaring types without an actual implementation.
           map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
 
+          -- NOTE: Custom addition. I prefer gi to gI.
+          map('gi', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
+
           -- Jump to the type of the word under your cursor.
           --  Useful when you're not sure what type a variable is and you want to see
           --  the definition of its *type*, not where it was *defined*.
@@ -484,7 +501,7 @@ require('lazy').setup {
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
-          map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+          map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction (⌘-↵)')
 
           -- Opens a popup that displays documentation about the word under your cursor
           --  See `:help K` for why this keymap
@@ -493,6 +510,12 @@ require('lazy').setup {
           -- WARN: This is not Goto Definition, this is Goto Declaration.
           --  For example, in C this would take you to the header
           map('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
+
+          -- Runs the test closest to the cursor
+          map('<leader>tn', ':TestNearest<cr>', '[T]est [N]earest')
+
+          -- Runs all tests in the current file
+          map('<leader>tf', ':TestFile<cr>', '[T]est [F]ile')
 
           -- The following two autocommands are used to highlight references of the
           -- word under your cursor when your cursor rests there for a little while.
@@ -570,6 +593,13 @@ require('lazy').setup {
             },
           },
         },
+
+        jdtls = {
+          cmd = {
+            'jdtls',
+            '--jvm-arg=-javaagent:/Users/adrian.helvik/.config/nvim/lombok.jar',
+          },
+        },
       }
 
       -- Ensure the servers and tools above are installed
@@ -598,7 +628,22 @@ require('lazy').setup {
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
-          ['jdtls'] = function() end,
+          -- NOTE: Disable annoying false positive lint in Rust with Tokio
+          -- https://github.com/rust-lang/rust-analyzer/issues/16542
+          ["rust_analyzer"] = function()
+            require("lspconfig").rust_analyzer.setup({
+              capabilities = capabilities,
+              settings = {
+                ["rust-analyzer"] = {
+                  diagnostics = {
+                    disabled = {
+                      "needless_return",
+                    },
+                  },
+                },
+              },
+            })
+          end
         },
       }
     end,
@@ -608,10 +653,10 @@ require('lazy').setup {
     'stevearc/conform.nvim',
     opts = {
       notify_on_error = false,
-      format_on_save = {
-        timeout_ms = 500,
-        lsp_fallback = true,
-      },
+      --format_on_save = {
+      --  timeout_ms = 500,
+      --  lsp_fallback = true,
+      --},
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
@@ -620,6 +665,7 @@ require('lazy').setup {
         -- You can use a sub-list to tell conform to run *until* a formatter
         -- is found.
         -- javascript = { { "prettierd", "prettier" } },
+        javascript = {},
       },
     },
   },
@@ -739,6 +785,16 @@ require('lazy').setup {
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
+  {
+    'LhKipp/nvim-nu',
+    config = function()
+    end
+  },
+
+  {
+    'elkasztano/nushell-syntax-vim'
+  },
+
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
@@ -798,6 +854,9 @@ require('lazy').setup {
       --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
     end,
+
+    -- Floating terminal support. Used for vim-test.
+    'voldikss/vim-floaterm',
   },
 
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
@@ -819,33 +878,141 @@ require('lazy').setup {
   --    For additional information, see `:help lazy.nvim-lazy.nvim-structuring-your-plugins`
   -- { import = 'custom.plugins' },
 
-  'mfussenegger/nvim-jdtls',
+  -- 'mfussenegger/nvim-jdtls',
+
+  'vim-test/vim-test',
+
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons',
+      'MunifTanjim/nui.nvim',
+    },
+  },
 }
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 
--- NOTE: <⌘-o> is mapped to <C-o> in iTerm profile key mappings.
+-- <⌘-o> is mapped to <C-o> in iTerm profile key mappings.
 vim.keymap.set('n', '<C-o>', ':Telescope find_files prompt_prefix=🔍<CR>', { noremap = true, silent = true })
 
--- NOTE: <⌘-⇧-f> is mapped to <C-f> in iTerm profile key mappings.
+-- <⌘-⇧-f> is mapped to <C-f> in iTerm profile key mappings.
 vim.keymap.set('n', '<C-f>', function()
   require('telescope.builtin').live_grep()
 end, { noremap = true, silent = true })
 
--- NOTE: <⌘-s> is mapped to <C-s> in iTerm profile key mappings.
+-- <⌘-s> is mapped to <C-s> in iTerm profile key mappings.
 vim.keymap.set('n', '<C-s>', ':w<CR>', { noremap = true, silent = true })
 
 vim.keymap.set('n', '<leader>f', ':Telescope find_files prompt_prefix=🔍<CR>', { noremap = true, silent = true })
 
 vim.keymap.set('n', 'øø', ':w<CR>', { noremap = true, silent = true })
 
-vim.api.nvim_exec(
-  [[
-    augroup jdtls
-        autocmd!
-        autocmd FileType java lua require('jdtls').start_or_attach({cmd = {'jdtls', '--jvm-arg=-javaagent:/Users/adrian.helvik/.config/nvim/lombok.jar'}})
-    augroup end
-]],
-  false
+vim.keymap.set('n', '<C-A>', vim.lsp.buf.code_action, { noremap = true, silent = true })
+
+vim.keymap.set('n', 'øe', ':tabe $MYVIMRC<CR>', { noremap = true, silent = true })
+
+-- Go to definition in new tab
+vim.keymap.set('n', '<C-g>', '<cmd>tab split | lua vim.lsp.buf.definition()<CR>', { noremap = true, silent = true })
+
+-- Transparent background
+-- vim.api.nvim_create_autocmd('BufEnter', {
+-- callback = function()
+-- vim.cmd [[highlight Normal ctermbg=none]]
+-- vim.cmd [[highlight NonText ctermbg=none]]
+-- vim.cmd [[highlight Normal guibg=none]]
+-- vim.cmd [[highlight NonText guibg=none]]
+-- end,
+-- })
+
+-- Prevent jdtls from prompting you to press enter all the time
+vim.cmd ':set cmdheight=3'
+
+-- vim.cmd 'let test#strategy = "neovim"'
+vim.cmd 'let test#strategy = "floaterm"'
+
+vim.cmd 'set shiftwidth=4'
+vim.cmd 'set tabstop=4'
+vim.cmd 'set expandtab'
+
+vim.api.nvim_create_user_command('Format', function(args)
+  local range = nil
+  if args.count ~= -1 then
+    local end_line = vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, true)[1]
+    range = {
+      start = { args.line1, 0 },
+      ['end'] = { args.line2, end_line:len() },
+    }
+  end
+  require('conform').format { async = true, lsp_fallback = true, range = range }
+end, { range = true })
+
+vim.keymap.set('n', 'øf', vim.lsp.buf.format, { noremap = true, silent = true })
+
+-- Remapped to ⌘-1 so it matches that good ole IDE feel
+vim.keymap.set('', '<C-i>', ':Neotree reveal<cr>', { noremap = true, silent = true })
+
+vim.keymap.set('n', '<F2>', vim.lsp.buf.rename, { noremap = true, silent = true })
+
+-- Make Typescript warnings in Javascript files less fucking annoying
+---------------------------------------------------------------------
+vim.diagnostic.config({
+	virtual_text = {
+		severity = { min = vim.diagnostic.severity.ERROR },
+	},
+	underline = {
+		severity = { min = vim.diagnostic.severity.WARNING },
+	},
+	signs = true,
+	update_in_insert = false,
+})
+
+-- Define a custom function to navigate diagnostics, excluding warnings
+local function goto_next_diagnostic_excluding_warnings()
+	-- Get all diagnostics for the current buffer, excluding warnings
+	local diagnostics = vim.diagnostic.get(0, {
+		severity = { min = vim.diagnostic.severity.ERROR },
+	})
+
+	-- Find the next diagnostic in the buffer that is greater than the cursor position
+	local next_diagnostic = nil
+	local current_pos = vim.api.nvim_win_get_cursor(0)
+	local current_line = current_pos[1] - 1 -- Convert to 0-indexed line number
+
+	for _, diag in ipairs(diagnostics) do
+		if diag.lnum > current_line then
+			next_diagnostic = diag
+			break
+		end
+	end
+
+	-- If a next diagnostic is found, move the cursor to its position
+	if next_diagnostic then
+		vim.api.nvim_win_set_cursor(0, { next_diagnostic.lnum + 1, next_diagnostic.col })
+		vim.diagnostic.open_float(nil, { focusable = false, scope = "cursor" })
+	else
+		print("No more diagnostics")
+	end
+end
+
+-- Bind the custom function to `]D`. This way we can go to warnings with ]d and errors with ]D
+vim.keymap.set(
+	"n",
+	"]D",
+	goto_next_diagnostic_excluding_warnings,
+	{ noremap = true, silent = true, desc = "Go to next error (excluding warnings)" }
 )
+
+require'lspconfig'.nushell.setup{}
+
+
+-- Neovide settings --
+----------------------
+
+vim.keymap.set('', '<D-1>', ':Neotree reveal<cr>', { noremap = true, silent = true })
+vim.keymap.set('i', '<D-v>', '<esc>pa', { noremap = true, silent = true })
+
+vim.keymap.set('', 'øp', ':!prettier % --write<cr>')
