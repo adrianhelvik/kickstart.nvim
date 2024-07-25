@@ -239,7 +239,7 @@ require('lazy').setup {
   --    require('Comment').setup({})
 
   -- "gc" to comment visual regions/lines
-  { 'numToStr/Comment.nvim', opts = {} },
+  { 'numToStr/Comment.nvim',    opts = {} },
 
   -- Here is a more advanced example where we pass configuration
   -- options to `gitsigns.nvim`. This is equivalent to the following lua:
@@ -275,7 +275,7 @@ require('lazy').setup {
   -- after the plugin has been loaded:
   --  config = function() ... end
 
-  { -- Useful plugin to show you pending keybinds.
+  {                     -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
     config = function() -- This is the function that runs, AFTER loading
@@ -357,7 +357,7 @@ require('lazy').setup {
         --   },
         -- },
         -- pickers = {}
-        file_ignore_patterns = { 
+        file_ignore_patterns = {
           "node_modules",
           "dist",
           "target",
@@ -643,7 +643,48 @@ require('lazy').setup {
                 },
               },
             })
+          end,
+          ----
+
+          ["tsserver"] = function()
+            require("lspconfig").tsserver.setup({
+              init_options = {
+                settings = {
+                  typescript = {
+                    inlayHints = {
+                      includeInlayParameterNameHints = "all",
+                      includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+                      includeInlayFunctionParameterTypeHints = true,
+                      includeInlayVariableTypeHints = true,
+                      includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+                      includeInlayPropertyDeclarationTypeHints = true,
+                      includeInlayFunctionLikeReturnTypeHints = true,
+                      includeInlayEnumMemberValueHints = true,
+                    },
+                  },
+                  javascript = {
+                    inlayHints = {
+                      includeInlayParameterNameHints = "all",
+                      includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+                      includeInlayFunctionParameterTypeHints = true,
+                      includeInlayVariableTypeHints = true,
+                      includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+                      includeInlayPropertyDeclarationTypeHints = true,
+                      includeInlayFunctionLikeReturnTypeHints = true,
+                      includeInlayEnumMemberValueHints = true,
+                    },
+                  },
+                },
+              },
+              on_attach = function(client, bufnr)
+                if capabilities.inlayHintProvider then
+                  vim.lsp.buf.inlay_hint(bufnr, true)
+                end
+              end
+            })
           end
+
+          ----
         },
       }
     end,
@@ -699,7 +740,10 @@ require('lazy').setup {
       --    you can use this plugin to help you. It even has snippets
       --    for various frameworks/libraries/etc. but you will have to
       --    set up the ones that are useful for you.
-      -- 'rafamadriz/friendly-snippets',
+      'rafamadriz/friendly-snippets',
+
+      -- Signature help
+      'hrsh7th/cmp-nvim-lsp-signature-help',
     },
     config = function()
       -- See `:help cmp`
@@ -758,6 +802,7 @@ require('lazy').setup {
           { name = 'nvim_lsp' },
           { name = 'luasnip' },
           { name = 'path' },
+          { name = 'nvim_lsp_signature_help' },
         },
       }
     end,
@@ -769,16 +814,36 @@ require('lazy').setup {
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`
     'folke/tokyonight.nvim',
-    lazy = false, -- make sure we load this during startup if it is your main colorscheme
+    lazy = false,    -- make sure we load this during startup if it is your main colorscheme
     priority = 1000, -- make sure to load this before all the other start plugins
     config = function()
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- vim.cmd.colorscheme 'tokyonight-night'
 
       -- You can configure highlights by doing something like
-      vim.cmd.hi 'Comment gui=none'
+      -- vim.cmd.hi 'Comment gui=none'
+    end,
+  },
+
+  {
+    'rose-pine/neovim',
+    name = 'rose-pine',
+    lazy = false,
+    priority = 1000,
+    config = function()
+      local function setColorScheme()
+        local hour = tonumber(os.date('%H'))
+        if hour >= 8 and hour < 19 then
+          vim.cmd.colorscheme 'rose-pine-dawn'
+        else
+          vim.cmd.colorscheme 'rose-pine-moon'
+        end
+      end
+      setColorScheme()
+      local timer = vim.loop.new_timer()
+      timer:start(0, 600, vim.schedule_wrap(setColorScheme))
     end,
   },
 
@@ -918,6 +983,8 @@ vim.keymap.set('n', 'øe', ':tabe $MYVIMRC<CR>', { noremap = true, silent = true
 -- Go to definition in new tab
 vim.keymap.set('n', '<C-g>', '<cmd>tab split | lua vim.lsp.buf.definition()<CR>', { noremap = true, silent = true })
 
+vim.keymap.set('n', 'øt', ':TestNearest<cr>')
+
 -- Transparent background
 -- vim.api.nvim_create_autocmd('BufEnter', {
 -- callback = function()
@@ -931,8 +998,9 @@ vim.keymap.set('n', '<C-g>', '<cmd>tab split | lua vim.lsp.buf.definition()<CR>'
 -- Prevent jdtls from prompting you to press enter all the time
 vim.cmd ':set cmdheight=3'
 
+vim.cmd 'let test#strategy = "basic"'
 -- vim.cmd 'let test#strategy = "neovim"'
-vim.cmd 'let test#strategy = "floaterm"'
+-- vim.cmd 'let test#strategy = "floaterm"'
 
 vim.cmd 'set shiftwidth=4'
 vim.cmd 'set tabstop=4'
@@ -960,53 +1028,53 @@ vim.keymap.set('n', '<F2>', vim.lsp.buf.rename, { noremap = true, silent = true 
 -- Make Typescript warnings in Javascript files less fucking annoying
 ---------------------------------------------------------------------
 vim.diagnostic.config({
-	virtual_text = {
-		severity = { min = vim.diagnostic.severity.ERROR },
-	},
-	underline = {
-		severity = { min = vim.diagnostic.severity.WARNING },
-	},
-	signs = true,
-	update_in_insert = false,
+  virtual_text = {
+    severity = { min = vim.diagnostic.severity.ERROR },
+  },
+  underline = {
+    severity = { min = vim.diagnostic.severity.WARNING },
+  },
+  signs = true,
+  update_in_insert = false,
 })
 
 -- Define a custom function to navigate diagnostics, excluding warnings
 local function goto_next_diagnostic_excluding_warnings()
-	-- Get all diagnostics for the current buffer, excluding warnings
-	local diagnostics = vim.diagnostic.get(0, {
-		severity = { min = vim.diagnostic.severity.ERROR },
-	})
+  -- Get all diagnostics for the current buffer, excluding warnings
+  local diagnostics = vim.diagnostic.get(0, {
+    severity = { min = vim.diagnostic.severity.ERROR },
+  })
 
-	-- Find the next diagnostic in the buffer that is greater than the cursor position
-	local next_diagnostic = nil
-	local current_pos = vim.api.nvim_win_get_cursor(0)
-	local current_line = current_pos[1] - 1 -- Convert to 0-indexed line number
+  -- Find the next diagnostic in the buffer that is greater than the cursor position
+  local next_diagnostic = nil
+  local current_pos = vim.api.nvim_win_get_cursor(0)
+  local current_line = current_pos[1] - 1 -- Convert to 0-indexed line number
 
-	for _, diag in ipairs(diagnostics) do
-		if diag.lnum > current_line then
-			next_diagnostic = diag
-			break
-		end
-	end
+  for _, diag in ipairs(diagnostics) do
+    if diag.lnum > current_line then
+      next_diagnostic = diag
+      break
+    end
+  end
 
-	-- If a next diagnostic is found, move the cursor to its position
-	if next_diagnostic then
-		vim.api.nvim_win_set_cursor(0, { next_diagnostic.lnum + 1, next_diagnostic.col })
-		vim.diagnostic.open_float(nil, { focusable = false, scope = "cursor" })
-	else
-		print("No more diagnostics")
-	end
+  -- If a next diagnostic is found, move the cursor to its position
+  if next_diagnostic then
+    vim.api.nvim_win_set_cursor(0, { next_diagnostic.lnum + 1, next_diagnostic.col })
+    vim.diagnostic.open_float(nil, { focusable = false, scope = "cursor" })
+  else
+    print("No more diagnostics")
+  end
 end
 
 -- Bind the custom function to `]D`. This way we can go to warnings with ]d and errors with ]D
 vim.keymap.set(
-	"n",
-	"]D",
-	goto_next_diagnostic_excluding_warnings,
-	{ noremap = true, silent = true, desc = "Go to next error (excluding warnings)" }
+  "n",
+  "]D",
+  goto_next_diagnostic_excluding_warnings,
+  { noremap = true, silent = true, desc = "Go to next error (excluding warnings)" }
 )
 
-require'lspconfig'.nushell.setup{}
+require 'lspconfig'.nushell.setup {}
 
 
 -- Neovide settings --
@@ -1016,3 +1084,15 @@ vim.keymap.set('', '<D-1>', ':Neotree reveal<cr>', { noremap = true, silent = tr
 vim.keymap.set('i', '<D-v>', '<esc>pa', { noremap = true, silent = true })
 
 vim.keymap.set('', 'øp', ':!prettier % --write<cr>')
+
+-- vim.keymap.set('n', 'zz', 'za')
+
+vim.keymap.set('n', '<leader>oo',
+  'O@ApiResponse(content = @Content(schema = @Schema(implementation = _.class)))<esc>F_cl')
+vim.keymap.set('n', '<leader>oa',
+  'O@ApiResponse(content = @Content(array = @ArraySchema(schema = @Schema(implementation = _.class))))<esc>F_cl')
+vim.keymap.set('n', '<leader>od', 'O@ApiResponse(description = "_")<esc>F_cl')
+
+-- Moving stuff with C-k/j
+-- vim.keymap.set('n', '<C-k>', 'ddkP')
+-- vim.keymap.set('n', '<C-j>', 'ddp')
